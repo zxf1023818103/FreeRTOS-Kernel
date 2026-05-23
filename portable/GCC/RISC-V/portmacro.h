@@ -97,7 +97,7 @@ extern void vTaskSwitchContext( void );
 /*-----------------------------------------------------------*/
 
 /* Critical section management. */
-#define portCRITICAL_NESTING_IN_TCB                             0
+#define portCRITICAL_NESTING_IN_TCB                             1
 
 #define portSET_INTERRUPT_MASK_FROM_ISR()                       0
 #define portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedStatusValue ) ( void ) uxSavedStatusValue
@@ -105,6 +105,7 @@ extern void vTaskSwitchContext( void );
 #define portDISABLE_INTERRUPTS()    __asm volatile( "csrc mstatus, 8" )
 #define portENABLE_INTERRUPTS()     __asm volatile( "csrs mstatus, 8" )
 
+/* disable restore xCriticalNesting in stack
 extern size_t xCriticalNesting;
 #define portENTER_CRITICAL()            \
 {                                       \
@@ -120,6 +121,11 @@ extern size_t xCriticalNesting;
         portENABLE_INTERRUPTS();        \
     }                                   \
 }
+*/
+extern void vTaskEnterCritical( void );
+extern void vTaskExitCritical( void );
+#define portENTER_CRITICAL()    vTaskEnterCritical()
+#define portEXIT_CRITICAL()     vTaskExitCritical()
 
 /*-----------------------------------------------------------*/
 
@@ -164,6 +170,13 @@ extern size_t xCriticalNesting;
 #endif
 
 #define portMEMORY_BARRIER() __asm volatile( "" ::: "memory" )
+
+extern BaseType_t TrapNetCounter;
+portFORCE_INLINE static BaseType_t xPortIsInsideInterrupt( void )
+{
+    return TrapNetCounter ? 1 : 0;
+}
+
 /*-----------------------------------------------------------*/
 
 /* configCLINT_BASE_ADDRESS is a legacy definition that was replaced by the

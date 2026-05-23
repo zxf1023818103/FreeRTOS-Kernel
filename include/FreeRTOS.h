@@ -295,6 +295,10 @@
     #define configNUM_THREAD_LOCAL_STORAGE_POINTERS    0
 #endif
 
+#ifndef configTHREAD_LOCAL_STORAGE_DELETE_CALLBACKS
+    #define configTHREAD_LOCAL_STORAGE_DELETE_CALLBACKS 0
+#endif
+
 #ifndef configUSE_RECURSIVE_MUTEXES
     #define configUSE_RECURSIVE_MUTEXES    0
 #endif
@@ -450,6 +454,10 @@
 #ifndef traceLOW_POWER_IDLE_END
     /* Called when returning to the Idle task after a tickless idle. */
     #define traceLOW_POWER_IDLE_END()
+#endif
+
+#ifndef config_CUSTOM_TICKLESS
+    #define config_CUSTOM_TICKLESS 0
 #endif
 
 #ifndef traceTASK_SWITCHED_OUT
@@ -869,8 +877,11 @@
     #define configEXPECTED_IDLE_TIME_BEFORE_SLEEP    2
 #endif
 
+#if (config_CUSTOM_TICKLESS == 2)
+#else
 #if configEXPECTED_IDLE_TIME_BEFORE_SLEEP < 2
     #error configEXPECTED_IDLE_TIME_BEFORE_SLEEP must not be less than 2
+#endif
 #endif
 
 #ifndef configUSE_TICKLESS_IDLE
@@ -1133,8 +1144,7 @@
     #define configENABLE_MPU    0
 #endif
 
-/* Set configENABLE_FPU to 1 to enable FPU support and 0 to disable it. This is
- * currently used in ARMv8M ports. */
+/* Set configENABLE_FPU to 1 to enable FPU support and 0 to disable it. */
 #ifndef configENABLE_FPU
     #define configENABLE_FPU    1
 #endif
@@ -1301,6 +1311,9 @@ typedef struct xSTATIC_TCB
     #if ( configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0 )
         void * pvDummy15[ configNUM_THREAD_LOCAL_STORAGE_POINTERS ];
     #endif
+    #if ( configTHREAD_LOCAL_STORAGE_DELETE_CALLBACKS )
+        void * pvDummy15_1[ configNUM_THREAD_LOCAL_STORAGE_POINTERS ];
+    #endif
     #if ( configGENERATE_RUN_TIME_STATS == 1 )
         configRUN_TIME_COUNTER_TYPE ulDummy16;
     #endif
@@ -1320,6 +1333,9 @@ typedef struct xSTATIC_TCB
     #endif
     #if ( configUSE_POSIX_ERRNO == 1 )
         int iDummy22;
+    #endif
+    #if (config_CUSTOM_TICKLESS == 2)
+        uint8_t ucDummy22;
     #endif
 } StaticTask_t;
 

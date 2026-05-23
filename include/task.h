@@ -1513,6 +1513,7 @@ char * pcTaskGetName( TaskHandle_t xTaskToQuery ) PRIVILEGED_FUNCTION; /*lint !e
  * \ingroup TaskUtils
  */
 TaskHandle_t xTaskGetHandle( const char * pcNameToQuery ) PRIVILEGED_FUNCTION; /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+TaskHandle_t xTaskGetHandleFromISR( const char * pcNameToQuery ) PRIVILEGED_FUNCTION;
 
 /**
  * task. h
@@ -1662,6 +1663,18 @@ configSTACK_DEPTH_TYPE uxTaskGetStackHighWaterMark2( TaskHandle_t xTask ) PRIVIL
     void * pvTaskGetThreadLocalStoragePointer( TaskHandle_t xTaskToQuery,
                                                BaseType_t xIndex ) PRIVILEGED_FUNCTION;
 
+    #if ( configTHREAD_LOCAL_STORAGE_DELETE_CALLBACKS )
+
+        /**
+         * Prototype of local storage pointer deletion callback.
+         */
+        typedef void (*TlsDeleteCallbackFunction_t)( int, void * );
+
+        /**
+         * Set local storage pointer and deletion callback.
+         */
+        UBaseType_t vTaskSetThreadLocalStoragePointerAndDelCallback( TaskHandle_t xTaskToSet, BaseType_t xIndex, void *pvValue, TlsDeleteCallbackFunction_t pvDelCallback);
+    #endif
 #endif
 
 #if ( configCHECK_FOR_STACK_OVERFLOW > 0 )
@@ -3226,6 +3239,13 @@ void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNC
                                           int32_t lInternalIndexOfKernelObject ) PRIVILEGED_FUNCTION;
 
 #endif /* #if ( ( portUSING_MPU_WRAPPERS == 1 ) && ( configUSE_MPU_WRAPPERS_V1 == 0 ) && ( configENABLE_ACCESS_CONTROL_LIST == 1 ) ) */
+
+typedef void (*foreach_handler_cb)(TaskHandle_t, eTaskState);
+void vTaskHandleForeachFromISR(foreach_handler_cb cb);
+
+#if (config_CUSTOM_TICKLESS == 2)
+uint8_t * pcTaskGetVendorFlags(TaskHandle_t tsk);
+#endif
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

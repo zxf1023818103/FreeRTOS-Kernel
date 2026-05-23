@@ -31,6 +31,7 @@
  *----------------------------------------------------------*/
 
 /* Scheduler includes. */
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "portmacro.h"
@@ -92,6 +93,15 @@ const uint64_t *pullNextTime = &ullNextTime;
 const size_t uxTimerIncrementsForOneTick = ( size_t ) ( ( configCPU_CLOCK_HZ ) / ( configTICK_RATE_HZ ) ); /* Assumes increment won't go over 32-bits. */
 uint32_t const ullMachineTimerCompareRegisterBase = configMTIMECMP_BASE_ADDRESS;
 volatile uint64_t * pullMachineTimerCompareRegister = NULL;
+BaseType_t TrapNetCounter = 0;
+const BaseType_t * pTrapNetCounter = &TrapNetCounter;
+
+#ifdef CONFIG_HIGH_ISR_STACK
+    BaseType_t LowIrqContext[3];
+    const BaseType_t *pLowIrqContext = LowIrqContext;
+    extern const uint32_t __freertos_high_irq_stack_top[];
+    const StackType_t xHighISRStackTop = ( StackType_t ) __freertos_high_irq_stack_top;
+#endif
 
 /* Holds the critical nesting value - deliberately non-zero at start up to
  * ensure interrupts are not accidentally enabled before the scheduler starts. */
@@ -160,6 +170,13 @@ extern void xPortStartFirstTask( void );
 
     #if( configASSERT_DEFINED == 1 )
     {
+        volatile uint32_t mtvec = 0;
+
+        /* Check the least significant two bits of mtvec are 00 - indicating
+        single vector mode. */
+        __asm volatile( "csrr %0, mtvec" : "=r"( mtvec ) );
+        configASSERT( ( mtvec & 0x03UL ) == 0x03 );
+
         /* Check alignment of the interrupt stack - which is the same as the
          * stack that was being used by main() prior to the scheduler being
          * started. */
@@ -185,7 +202,14 @@ extern void xPortStartFirstTask( void );
          * not present as with pulpino? */
         __asm volatile( "csrs mie, %0" :: "r"(0x880) );
     }
+    #else
+    {
+        /* Enable external interrupts. */
+        __asm volatile( "csrs mie, %0" :: "r"(0x800) );
+    }
     #endif /* ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 ) */
+    extern void bflb_irq_enable(int irq);
+    bflb_irq_enable(7);
 
     xPortStartFirstTask();
 
