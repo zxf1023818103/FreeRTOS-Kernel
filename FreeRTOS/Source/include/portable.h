@@ -97,13 +97,13 @@ extern "C" {
  *
  */
 #if( portUSING_MPU_WRAPPERS == 1 )
-	#if( portHAS_STACK_OVERFLOW_CHECKING == 1 )
+	#if defined (portHAS_STACK_OVERFLOW_CHECKING) && (portHAS_STACK_OVERFLOW_CHECKING == 1)
 		StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, StackType_t *pxEndOfStack, TaskFunction_t pxCode, void *pvParameters, BaseType_t xRunPrivileged ) PRIVILEGED_FUNCTION;
 	#else
 		StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters, BaseType_t xRunPrivileged ) PRIVILEGED_FUNCTION;
 	#endif
 #else
-	#if( portHAS_STACK_OVERFLOW_CHECKING == 1 )
+	#if defined (portHAS_STACK_OVERFLOW_CHECKING ) && ( portHAS_STACK_OVERFLOW_CHECKING == 1)
 		StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, StackType_t *pxEndOfStack, TaskFunction_t pxCode, void *pvParameters ) PRIVILEGED_FUNCTION;
 	#else
 		StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters ) PRIVILEGED_FUNCTION;
@@ -139,6 +139,7 @@ void vPortFree( void *pv ) PRIVILEGED_FUNCTION;
 void vPortInitialiseBlocks( void ) PRIVILEGED_FUNCTION;
 size_t xPortGetFreeHeapSize( void ) PRIVILEGED_FUNCTION;
 size_t xPortGetMinimumEverFreeHeapSize( void ) PRIVILEGED_FUNCTION;
+size_t xPortGetTotalHeapSize( void ) PRIVILEGED_FUNCTION;
 
 /*
  * Setup the hardware ready for the scheduler to take control.  This generally

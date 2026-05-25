@@ -68,6 +68,7 @@
  *
  */
 #include <stdlib.h>
+#include <string.h>
 
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
@@ -148,7 +149,8 @@ void *pvReturn = NULL;
 		{
 			/* The wanted size is increased so it can contain a BlockLink_t
 			structure in addition to the requested amount of bytes. */
-			if( xWantedSize > 0 )
+			if( ( xWantedSize > 0 ) &&
+				( ( xWantedSize + xHeapStructSize ) >  xWantedSize ) ) /* Overflow check */
 			{
 				xWantedSize += xHeapStructSize;
 
@@ -156,8 +158,16 @@ void *pvReturn = NULL;
 				of bytes. */
 				if( ( xWantedSize & portBYTE_ALIGNMENT_MASK ) != 0x00 )
 				{
-					/* Byte alignment required. */
-					xWantedSize += ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) );
+					/* Byte alignment required. Check for overflow */
+					if( ( xWantedSize + ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) ) ) >
+						xWantedSize )
+					{
+						xWantedSize += ( portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK ) );
+					} 
+					else 
+					{
+						xWantedSize = 0;
+					}
 				}
 				else
 				{
@@ -166,13 +176,13 @@ void *pvReturn = NULL;
 			}
 			else
 			{
-				mtCOVERAGE_TEST_MARKER();
+				xWantedSize = 0;
 			}
 
 			if( ( xWantedSize > 0 ) && ( xWantedSize <= xFreeBytesRemaining ) )
 			{
 				/* Traverse the list from the start	(lowest address) block until
-				one	of adequate size is found. */
+				one of adequate size is found. */
 				pxPreviousBlock = &xStart;
 				pxBlock = xStart.pxNextFreeBlock;
 				while( ( pxBlock->xBlockSize < xWantedSize ) && ( pxBlock->pxNextFreeBlock != NULL ) )
@@ -182,7 +192,7 @@ void *pvReturn = NULL;
 				}
 
 				/* If the end marker was reached then a block of adequate size
-				was	not found. */
+				was not found. */
 				if( pxBlock != pxEnd )
 				{
 					/* Return the memory space pointed to - jumping over the
@@ -326,6 +336,16 @@ size_t xPortGetFreeHeapSize( void )
 size_t xPortGetMinimumEverFreeHeapSize( void )
 {
 	return xMinimumEverFreeBytesRemaining;
+}
+/*-----------------------------------------------------------*/
+
+void xPortResetHeapMinimumEverFreeHeapSize( void )
+{
+	taskENTER_CRITICAL();
+	{
+		xMinimumEverFreeBytesRemaining = xFreeBytesRemaining;
+	}
+	taskEXIT_CRITICAL();
 }
 /*-----------------------------------------------------------*/
 
@@ -483,3 +503,61 @@ const HeapRegion_t *pxHeapRegion;
 	xBlockAllocatedBit = ( ( size_t ) 1 ) << ( ( sizeof( size_t ) * heapBITS_PER_BYTE ) - 1 );
 }
 
+void* pvPortReAlloc( void *pv,  size_t xWantedSize )
+{
+	BlockLink_t *pxLink;
+	unsigned char *puc = ( unsigned char * ) pv;
+
+	if( pv )
+	{
+		if( !xWantedSize )
+		{
+			vPortFree( pv );
+			return NULL;
+		}
+
+		void *newArea = pvPortMalloc( xWantedSize );
+		if( newArea )
+		{
+			/* The memory being freed will have an xBlockLink structure immediately
+				before it. */
+			puc -= xHeapStructSize;
+
+			/* This casting is to keep the compiler from issuing warnings. */
+			pxLink = ( void * ) puc;
+
+			size_t oldSize =  (pxLink->xBlockSize & ~xBlockAllocatedBit) - xHeapStructSize;
+			size_t copySize = ( oldSize < xWantedSize ) ? oldSize : xWantedSize;
+			memcpy( newArea, pv, copySize );
+
+			vTaskSuspendAll();
+			{
+				/* Add this block to the list of free blocks. */
+				pxLink->xBlockSize &= ~xBlockAllocatedBit;
+				xFreeBytesRemaining += pxLink->xBlockSize;
+				prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
+			}
+			xTaskResumeAll();
+			return newArea;
+		}
+	}
+	else if( xWantedSize )
+		return pvPortMalloc( xWantedSize );
+	else
+		return NULL;
+
+	return NULL;
+}
+
+void *pvPortCalloc(size_t xWantedCnt, size_t xWantedSize)
+{
+	void *p;
+
+	/* allocate 'xWantedCnt' objects of size 'xWantedSize' */
+	p = pvPortMalloc(xWantedCnt * xWantedSize);
+	if (p) {
+		/* zero the memory */
+		memset(p, 0, xWantedCnt * xWantedSize);
+	}
+	return p;
+}
