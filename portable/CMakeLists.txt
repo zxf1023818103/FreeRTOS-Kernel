@@ -16,7 +16,7 @@ endif()
 # FreeRTOS internal cmake file. Do not use it in user top-level project
 
 # [at-project] STATIC, not the upstream V11 OBJECT: the Bouffalo SDK links its libs
-# (bflb_lhal / bl616_std / bflb_log / bflb_freertos_port) and the freertos targets in a
+# (bflb_lhal / bl616_std / bflb_log / freertos_port) and the freertos targets in a
 # mutually-referencing cluster. CMake tolerates such a cycle when every member is a
 # STATIC_LIBRARY (as in V10.6.2), but an OBJECT_LIBRARY inside the strongly-connected
 # component makes the generate step fail. STATIC restores the V10.6.2 behaviour; the port
